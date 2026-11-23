@@ -63,13 +63,20 @@ const unlock=()=>{if(!AC){try{AC=new(window.AudioContext||window.webkitAudioCont
 const tone=(f,d,type='sine',v=.15,when=0)=>{if(!AC)return;const t=AC.currentTime+when,o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f,t);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g).connect(AC.destination);o.start(t);o.stop(t+d+.02)};
 const noise=(d,v,when=0,hp=1200)=>{if(!AC)return;if(!NOISE){NOISE=AC.createBuffer(1,AC.sampleRate,AC.sampleRate);const c=NOISE.getChannelData(0);for(let i=0;i<c.length;i++)c[i]=Math.random()*2-1}
  const t=AC.currentTime+when,s=AC.createBufferSource(),f=AC.createBiquadFilter(),g=AC.createGain();s.buffer=NOISE;f.type='highpass';f.frequency.value=hp;g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.0001,t+d);s.connect(f).connect(g).connect(AC.destination);s.start(t);s.stop(t+d+.02)};
+const sweep=(f0,f1,d,type='square',v=.08,when=0)=>{if(!AC)return;const t=AC.currentTime+when,o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.setValueAtTime(f0,t);o.frequency.exponentialRampToValueAtTime(f1,t+d);g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.0001,t+d+.15);o.connect(g).connect(AC.destination);o.start(t);o.stop(t+d+.2)};
+const coins=(n,span,when=0)=>{for(let i=0;i<n;i++){const w=when+Math.random()*span;tone(1800+Math.random()*1800,.07,'triangle',.05,w);if(i%3===0)noise(.03,.04,w,5000)}};
 const SFX={
  tap:()=>tone(660,.05,'triangle',.06),
  start:()=>{[523,659,784,1047].forEach((f,i)=>tone(f,.18,'square',.06,i*.08));noise(.3,.08,.32,3000)},
- drum:()=>{for(let i=0;i<14;i++)noise(.04,.05+i*.01,i*.05,900);noise(.8,.22,.75,2500);tone(110,.4,'sine',.3,.75)},
- win:()=>[784,988,1175,1568].forEach((f,i)=>tone(f,.25,'square',.06,i*.1)),
+ // リーチ:だんだん速く高くなる連打 → 上昇音 → ドン
+ drum:()=>{let t=0;for(let i=0;i<16;i++){tone(440+i*45,.05,'square',.05,t);t+=Math.max(.025,.075-i*.003)}sweep(300,1800,.45,'sawtooth',.06,.3);noise(.6,.2,.75,2500);tone(70,.45,'sine',.35,.75)},
+ // 大当たり:キュイーン → ファンファーレ → 玉がジャラジャラ
+ win:()=>{sweep(400,2600,.5,'square',.07);sweep(600,3200,.5,'triangle',.05,.05);[523,659,784,1047,1319,1568].forEach((f,i)=>tone(f,.22,'square',.07,.45+i*.07));[1047,1319,1568].forEach(f=>tone(f,.9,'square',.05,.9));coins(28,1.0,.9)},
  lose:()=>{[392,311,262,196].forEach((f,i)=>tone(f,.32,'sawtooth',.07,i*.14))},
- drink:()=>{tone(80,.5,'square',.2);noise(.5,.25,0,400);[523,523,392].forEach((f,i)=>tone(f,.15,'square',.08,.5+i*.16))},
+ // 飲む人確定:サイレン → ドンドン → キュイン → ジャラジャラ
+ drink:()=>{for(let i=0;i<6;i++)tone(i%2?660:990,.12,'square',.08,i*.12);tone(70,.35,'sine',.35,.75);tone(70,.35,'sine',.35,.95);noise(.4,.2,.75,500);sweep(500,2400,.35,'square',.07,1.1);[784,988,1175,1568].forEach((f,i)=>tone(f,.2,'square',.07,1.4+i*.07));coins(20,.8,1.6)},
+ // セーフ:軽いチャイムと少しの玉
+ reveal:()=>{[1319,1760].forEach((f,i)=>tone(f,.25,'triangle',.08,i*.09));coins(8,.5,.15)},
  card:()=>{noise(.06,.12,0,4000);tone(880,.09,'triangle',.1,.05)},
  dice:()=>range(9).forEach(i=>{noise(.03,.12,i*.07,2000);tone(160+rnd(380),.03,'square',.04,i*.07)}),
  spin:()=>range(14).forEach(i=>noise(.02,.08,i*.05*(1+i*.08),3000)),
@@ -121,7 +128,7 @@ const joinUrl=c=>{const web=/^https?:$/.test(location.protocol)&&!/^(localhost|1
 
 /* --- ロビー(端末内だけの画面) --- */
 const LOGO='<h1 class="logo"><img src="img/logo.jpg" alt="のみゲーBOX" width="120" height="120"></h1>';
-const gate=()=>show(`<div class="gate">${LOGO}<p class="center">はじめに確認させてください。</p><div class="card"><p class="q">あなたは20歳以上ですか？</p><p class="muted">20歳未満の人は、罰が「罰ゲーム」になります(お酒の罰は出ません)。</p><div class="row"><button data-l="adult" data-v="1">はい</button><button class="g" data-l="adult" data-v="0">いいえ</button></div></div></div>`);
+const gate=()=>show(`<div class="gate">${LOGO}<p class="center">はじめに確認させてください。</p><div class="card"><p class="q">あなたは20歳以上ですか？</p><p class="muted">20歳未満の人は飲む対象から外れます(お酒は出ません)。</p><div class="row"><button data-l="adult" data-v="1">はい</button><button class="g" data-l="adult" data-v="0">いいえ</button></div></div></div>`);
 const lobby=(msg='')=>{mode=null;net('');if(me.adult==null)return gate();
  show(`${LOGO}<p class="muted center">各自のスマホで同時に遊ぶパーティーゲーム集(1〜10人)</p>
 ${msg?`<p class="pen">${esc(msg)}</p>`:''}
@@ -132,7 +139,7 @@ ${msg?`<p class="pen">${esc(msg)}</p>`:''}
 <p class="note">年齢の設定は<button class="g mini" data-l="regate">変更</button></p>`)};
 const howto=()=>show(`<h1>遊び方</h1><p>全員が同じ合言葉を入れて「入る」を押すと、同じ部屋に集まれます。最初に入った人がホスト(進行役)。QRコードや招待URLからでも入れます。スマホが1台しかない時は「1台で遊ぶ」で、画面の指示に従ってスマホを渡してください。</p>
 ${GAMES.map(g=>`<div class="card"><h2>${g.name}</h2><p class="muted">${g.min}人から</p><ol>${g.rules.map(r=>`<li>${r}</li>`).join('')}</ol></div>`).join('')}
-<div class="card"><h2>勝ち負けと罰</h2><ol><li>どのゲームも「勝った人」「負けた人」「一番負けた人」が決まる</li><li>罰を受ける範囲はホストが選ぶ:負けた人/一番負けた人だけ/勝った人以外/勝った人が指名/全員</li><li>罰は「飲む(20歳以上のみ・1口か2口)」か「罰ゲーム」</li><li>勝ち・負け・罰の回数は「成績」で見られる</li></ol></div>
+<div class="card"><h2>勝ち負けと飲む人</h2><ol><li>どのゲームも「勝った人」「負けた人」「一番負けた人」が決まる</li><li>飲む人の範囲はホストが選ぶ:負けた人/一番負けた人だけ/勝った人以外/勝った人が指名/全員</li><li>選ばれた人が飲む(1口か2口)。20歳未満・年齢未確認の人は飲まずにセーフ</li><li>勝ち・負け・飲んだ回数は「成績」で見られる</li></ol></div>
 <button data-l="back">戻る</button>`);
 const takeName=()=>{const v=($('#nmIn')?.value||'').trim().slice(0,10);if(!v){lobby('名前を入れてね');return false}me.name=v;ls.set('nm-name',v);return true};
 const cleanup=()=>{try{peer&&peer.destroy()}catch(e){}peer=null;conn=null;conns.clear();clearTimeout(rt);rt=null};
@@ -321,8 +328,8 @@ document.addEventListener('focusout',e=>{if(e.target.classList&&e.target.classLi
 const nm=id=>{const p=pl(id);return esc(p?p.name:'?')};
 // 自分だけのカード。設定「伏せる」のときは押している間だけ表になる
 const peek=(inner,cls='')=>`<div class="card center peek ${cls}" tabindex="0" role="button" aria-label="自分のカード(押している間だけ表示)"><div class="peek-in">${inner}</div><div class="peek-cv" aria-hidden="true"><b>長押しでめくる</b><span>周りに見られないように</span></div></div>`;
-const drinkFor=id=>H.mode==='drink'&&!!(pl(id)&&pl(id).adult);
-const penText=id=>drinkFor(id)?`${H.sips}口飲む`:pick(SOFT);
+const drinkFor=id=>!!(pl(id)&&pl(id).adult);
+const penText=id=>drinkFor(id)?`${H.sips}口飲む`:'20歳未満・未確認なのでセーフ';
 const G=(type,pid,phase)=>{const g=H.g;return g&&g.type===type&&g.phase!=='done'&&(!phase||g.phase===phase)&&g.ps.includes(pid)?g:null};
 const isHost=pid=>onDevice(pid);
 const sound=(k,sid,delay=0)=>`<i hidden data-sfx="${k}" data-sid="${sid}" data-delay="${delay}"></i>`;
@@ -359,35 +366,35 @@ const body=pid=>{const g=H.g;
  if(!g.ps.includes(pid))return `${badge(g.type)}<div class="card"><p>このゲームの途中で入ったので、次のゲームから参加。</p></div>${scores(pid)}`;
  const [k,t]=NX[g.type](g,pid);
  return `<i hidden data-scr="g-${g.id}-${g.phase}-${pid}"></i>`+intro(g,pid)+badge(g.type)+nx(k,t)+P[g.type](pid)+(isHost(pid)?'<button class="g" data-a="redo" data-confirm="結果を残さず、同じゲームを最初からやり直しますか？(お題・カードは配り直し)">配り直してやり直す(ホスト)</button>':'')+rulesBox(g.type)};
-const scores=pid=>`<div class="card"><table><tr><th>名前</th><th class="n">勝</th><th class="n">負</th><th class="n">罰</th>${isHost(pid)&&!H.g?'<th></th>':''}</tr>${H.players.map(p=>`<tr><td>${esc(p.name)}${p.on?'':' <span class="muted">(切断)</span>'}${H.local.includes(p.id)?` <span class="muted">(この端末・${p.age==='adult'?'20歳以上':p.age==='minor'?'20歳未満':'年齢未確認'})</span>`:''}</td><td class="n">${p.w}</td><td class="n">${p.l}</td><td class="n">${p.pen}</td>${isHost(pid)&&!H.g?`<td class="n">${p.id!==H.host?`<button class="g mini" data-a="kick" data-v="${esc(p.id)}" aria-label="${esc(p.name)}を外す" data-confirm="${esc(p.name)}を外しますか？">外す</button>`:''}</td>`:''}</tr>`).join('')}</table></div>`;
+const scores=pid=>`<div class="card"><table><tr><th>名前</th><th class="n">勝</th><th class="n">負</th><th class="n">飲</th>${isHost(pid)&&!H.g?'<th></th>':''}</tr>${H.players.map(p=>`<tr><td>${esc(p.name)}${p.on?'':' <span class="muted">(切断)</span>'}${H.local.includes(p.id)?` <span class="muted">(この端末・${p.age==='adult'?'20歳以上':p.age==='minor'?'20歳未満':'年齢未確認'})</span>`:''}</td><td class="n">${p.w}</td><td class="n">${p.l}</td><td class="n">${p.pen}</td>${isHost(pid)&&!H.g?`<td class="n">${p.id!==H.host?`<button class="g mini" data-a="kick" data-v="${esc(p.id)}" aria-label="${esc(p.name)}を外す" data-confirm="${esc(p.name)}を外しますか？">外す</button>`:''}</td>`:''}</tr>`).join('')}</table></div>`;
 const qrSvg=url=>{try{if(typeof qrcode!=='function')return'';const q=qrcode(0,'M');q.addData(url);q.make();return q.createSvgTag({cellSize:4,margin:2,scalable:true})}catch(e){return''}};
 const hub=pid=>{const on=H.players.filter(p=>p.on).length;
- if(!isHost(pid))return `${nx('wait','ホストがゲームを選んでいます')}<div class="card"><b>今の罰のルール</b><p>${SCOPES.find(s=>s[0]===H.scope)[1]}が罰(${H.mode==='drink'?H.sips+'口':'罰ゲーム'})</p></div>${scores(pid)}`;
+ if(!isHost(pid))return `${nx('wait','ホストがゲームを選んでいます')}<div class="card"><b>今のルール</b><p>${SCOPES.find(s=>s[0]===H.scope)[1]}が飲む(${H.sips}口)</p></div>${scores(pid)}`;
  const url=H.offline?'':joinUrl(code);
  const invite=H.offline?'':`<div class="card invite"><div class="inv-top"><div><p class="muted">この合言葉で入ってもらう</p><p class="code">${esc(code)}</p><p class="muted">QRを読むか、招待を送ってね</p></div><div class="qr">${qrSvg(url)}</div></div><div class="row"><button class="g" data-l="share" data-url="${esc(url)}">招待を送る</button><button class="g" data-copy="${esc(url)}">URLをコピー</button></div><button class="g ${H.locked?'on':''}" data-a="lock">${H.locked?'締め切り中(タップで解除)':'部屋を締め切る'}</button></div>`;
- const local=`<div class="card"><b>このスマホで遊ぶ人を追加</b><p class="muted">スマホを持っていない人。順番が来たら画面の指示でスマホを渡します</p><input type="text" data-f="lname" data-k="local" maxlength="10" placeholder="名前" aria-label="追加する人の名前"><p class="muted">その人の年齢を聞いて、当てはまるボタンで追加。20歳未満と未確認の人にはお酒の罰は出ません</p><div class="row wrap3"><button class="g" data-a="addLocal" data-v="1" ${H.players.length>=10?'disabled':''}>20歳以上</button><button class="g" data-a="addLocal" data-v="m" ${H.players.length>=10?'disabled':''}>20歳未満</button><button class="g" data-a="addLocal" data-v="0" ${H.players.length>=10?'disabled':''}>未確認</button></div></div>`;
- const rules=`<div class="card"><b>誰が罰を受ける？</b><div class="row wrap3">${SCOPES.map(([k,l])=>`<button class="g ${H.scope===k?'on':''}" data-a="scope" data-v="${k}">${l}</button>`).join('')}</div>
- <b>罰の中身</b><div class="row"><button class="g ${H.mode==='soft'?'on':''}" data-a="mode" data-v="soft">罰ゲーム</button><button class="g ${H.mode==='drink'?'on':''}" data-a="mode" data-v="drink" ${pl(H.host).adult?'':'disabled'}>飲む(20歳以上)</button></div>
- ${H.mode==='drink'?`<b>飲む量</b><div class="row"><button class="g ${H.sips===1?'on':''}" data-a="sips" data-v="1">1口</button><button class="g ${H.sips===2?'on':''}" data-a="sips" data-v="2">2口</button></div><p class="muted">20歳未満の人には罰ゲームが出ます。一気はなし</p>`:''}</div>`;
+ const local=`<div class="card"><b>このスマホで遊ぶ人を追加</b><p class="muted">スマホを持っていない人。順番が来たら画面の指示でスマホを渡します</p><input type="text" data-f="lname" data-k="local" maxlength="10" placeholder="名前" aria-label="追加する人の名前"><p class="muted">その人の年齢を聞いて、当てはまるボタンで追加。20歳未満と未確認の人は飲みません(セーフ)</p><div class="row wrap3"><button class="g" data-a="addLocal" data-v="1" ${H.players.length>=10?'disabled':''}>20歳以上</button><button class="g" data-a="addLocal" data-v="m" ${H.players.length>=10?'disabled':''}>20歳未満</button><button class="g" data-a="addLocal" data-v="0" ${H.players.length>=10?'disabled':''}>未確認</button></div></div>`;
+ const rules=`<div class="card"><b>誰が飲む？</b><div class="row wrap3">${SCOPES.map(([k,l])=>`<button class="g ${H.scope===k?'on':''}" data-a="scope" data-v="${k}">${l}</button>`).join('')}</div>
+ <b>飲む量</b><div class="row"><button class="g ${H.sips===1?'on':''}" data-a="sips" data-v="1">1口</button><button class="g ${H.sips===2?'on':''}" data-a="sips" data-v="2">2口</button></div><p class="muted">20歳未満・年齢未確認の人は飲まずにセーフ。一気はなし</p></div>`;
  return `${nx('act','ゲームを選んでタップ')}${invite}<h2 class="marquee">ゲームを選ぶ</h2><div class="menu">${GAMES.map(g=>`<button class="game" data-a="game" data-v="${g.id}" ${on<g.min?'disabled':''} aria-label="${g.name}:${g.d}(${g.min}人から)"><img src="img/games/${g.id}.png" alt="" loading="lazy"><b class="gname">${g.name}</b><small>${g.c}</small><em>${g.min}人〜</em></button>`).join('')}</div>
  ${rules}${scores(pid)}${local}<button class="ng" data-a="settle">成績を見る</button>`};
 
 /* --- 結果発表:ドラムロール → ハンコ → 中身 --- */
 const waveList=g=>`<div class="card"><b>予想の一覧(正解 ${g.t})</b><table><tr><th>名前</th><th class="n">予想</th><th class="n">ズレ</th></tr>${g.ps.filter(x=>x!==g.psy&&g.gs[x]!=null).sort((a,b)=>Math.abs(g.gs[a]-g.t)-Math.abs(g.gs[b]-g.t)).map(x=>`<tr><td>${nm(x)}</td><td class="n">${g.gs[x]}</td><td class="n">${Math.abs(g.gs[x]-g.t)}</td></tr>`).join('')}</table></div>`;
-const result=pid=>{const g=H.g,r=g.res,win=r.win.includes(pid),drink=r.drinkers.some(x=>x.id===pid),lose=r.lose.includes(pid);
+const result=pid=>{const g=H.g,r=g.res,win=r.win.includes(pid),drink=r.drinkers.some(x=>x.id===pid)&&drinkFor(pid),lose=r.lose.includes(pid);
  const kind=drink?'drink':win?'win':lose?'safe':'even';
- const stampTxt={drink:drinkFor(pid)?'飲め！':'罰ゲーム！',win:'勝ち！',safe:'負け…でもセーフ',even:'セーフ'}[kind];
+ const stampTxt={drink:'飲め！',win:'勝ち！',safe:'負け…でもセーフ',even:'セーフ'}[kind];
  const id=g.id+'r'+pid;
  const canPick=r.pick&&!r.picked&&r.win.some(w=>w===pid||(onDevice(pid)&&onDevice(w)));
  const pickUi=r.pick&&!r.picked?(canPick?`<div class="card pickcard"><b>${r.win.length>1?'勝った人で相談して':nm(r.win[0])+'が'}、飲む人を指名！</b><div class="row wrap3">${g.ps.filter(x=>!r.win.includes(x)||g.ps.length===1).map(x=>`<button data-a="pickTo" data-v="${esc(x)}">${nm(x)}</button>`).join('')}</div></div>`:`<div class="card"><p>${r.win.map(nm).join('・')}が飲む人を指名中…</p></div>`):'';
- const drinkers=r.drinkers.length?`<div class="card drinkers"><b>${H.mode==='drink'?'飲む人':'罰ゲーム'}</b>${r.drinkers.map(x=>`<p class="pen big2">${nm(x.id)}:${esc(x.t)}</p>`).join('')}</div>`:(r.pick&&!r.picked?'':'<div class="card"><b>罰なし</b></div>');
+ const dk=r.drinkers.filter(x=>drinkFor(x.id)),pass=r.drinkers.filter(x=>!drinkFor(x.id));
+ const drinkers=dk.length||pass.length?`<div class="card drinkers"><b>飲む人</b>${dk.length?dk.map(x=>`<p class="pen big2">${nm(x.id)}:${H.sips}口</p>`).join(''):'<p class="big2">なし</p>'}${pass.length?`<p class="muted">${pass.map(x=>nm(x.id)).join('・')}は20歳未満・未確認なのでセーフ</p>`:''}</div>`:(r.pick&&!r.picked?'':'<div class="card drinkers"><b>飲む人</b><p class="big2">なし</p></div>');
  return `${fx('reveal '+kind,id,`<div class="drum"><span>結果発表</span></div>${kind==='win'?confetti():''}${kind==='drink'?'<div class="flash"></div>':''}<p class="stamp ${kind}">${stampTxt}</p>`)}
  ${sound('drum',id+'d')}${sound(kind==='drink'?'drink':kind==='win'?'win':'reveal',id+'s',800)}
- <div class="fx after" data-fx="${id}a">${badge(g.type)}${canPick?nx('act','飲む人を指名しよう'):''}<h2>${r.title}</h2><div class="card body">${r.body}</div>${g.type==='wave'?waveList(g):''}${pickUi}${drinkers}
+ <div class="fx after" data-fx="${id}a">${badge(g.type)}${canPick?nx('act','飲む人を指名しよう'):''}<h2>${r.title}</h2>${pickUi}${drinkers}<div class="card body">${r.body}</div>${g.type==='wave'?waveList(g):''}
  ${isHost(pid)?`<button class="nextbig" data-a="again">次へ(もう1回)</button><div class="row"><button class="g" data-a="next">別のゲーム(おまかせ)</button><button class="g" data-a="menu">メニュー</button></div>`:nx('wait','ホストが次を選んでいます')}${scores(pid)}</div>`};
 const settle=pid=>{const o=[...H.players].sort((a,b)=>b.w-a.w||a.l-b.l),n=o.length,king=[...H.players].sort((a,b)=>b.l-a.l)[0];
  return `${sound('win','settle'+o.map(p=>p.w+'.'+p.l).join(','))}<h2>今日の成績</h2>${n?`<div class="card center"><p class="muted">MVP</p><p class="big">${esc(o[0].name)}</p><p>${o[0].w}勝${o[0].l}敗</p>${king&&king.l?`<p class="muted">負け王:${esc(king.name)}(${king.l}敗)</p>`:''}</div>`:''}
- <div class="card"><table><tr><th>順位</th><th>名前</th><th class="n">勝</th><th class="n">負</th><th class="n">罰</th></tr>${o.map((p,r)=>`<tr><td>${r+1}</td><td>${esc(p.name)}</td><td class="n">${p.w}</td><td class="n">${p.l}</td><td class="n">${p.pen}</td></tr>`).join('')}</table></div>
+ <div class="card"><table><tr><th>順位</th><th>名前</th><th class="n">勝</th><th class="n">負</th><th class="n">飲</th></tr>${o.map((p,r)=>`<tr><td>${r+1}</td><td>${esc(p.name)}</td><td class="n">${p.w}</td><td class="n">${p.l}</td><td class="n">${p.pen}</td></tr>`).join('')}</table></div>
  ${isHost(pid)?'<button class="ng" data-a="reset" data-confirm="成績を全部リセットしますか？">成績をリセット</button><button class="g" data-a="menu">メニューへ</button>':''}`};
 
 /* ================= 勝ち負けの決着 ================= */
@@ -397,7 +404,7 @@ const finish=(title,body,o)=>{const g=H.g,win=uniq(o.win||[]),lose=uniq(o.lose||
  let ids=[],pk=false;
  if(H.scope==='lose')ids=lose;else if(H.scope==='worst')ids=worst;else if(H.scope==='notwin')ids=g.ps.filter(x=>!win.includes(x));else if(H.scope==='all')ids=g.ps;
  else if(H.scope==='pick'){if(win.length)pk=true;else ids=lose}
- const drinkers=ids.map(id=>{const p=pl(id);if(p)p.pen++;return{id,t:penText(id)}});
+ const drinkers=ids.map(id=>{const p=pl(id);if(p&&drinkFor(id))p.pen++;return{id,t:penText(id)}});
  g.phase='done';g.res={title,body,win,lose,drinkers,pick:pk,picked:null}};
 /* ================= ゲーム ================= */
 const I={},P={},A={},F={};
