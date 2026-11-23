@@ -4,7 +4,7 @@
 // 1台モードでは、ホスト端末に「ローカル席」を作り、スマホを渡しながら遊ぶ。
 // 勝ち負け:各ゲームは「勝った人・負けた人・一番負けた人」を出し、ホストが決めた範囲の人が飲む(罰を受ける)。
 {
-const {SAN,ITO,WORDS,WAVE,SOFT}=window.NOMIGE_DATA;
+const {SAN,ITO,WORDS,WAVE,SOFT,II_EV,II_IT}=window.NOMIGE_DATA;
 const PROTO=5;
 const WEB_URL='https://asadzumataketo-cyber.github.io/nomige-box/';
 const GAMES=[
@@ -13,13 +13,15 @@ const GAMES=[
  {id:'ito',c:'数字を例えて並べ',name:'ito',min:2,d:'数字を言わずに表現して、小さい順に並ぶ(協力)',
   rules:['全員に1〜100の数字がこっそり配られる','テーマに沿って、数字の大きさを例えで伝える(例:テーマ「強そうな動物」で「ライオン」なら大きめ)','数字そのものは言っちゃダメ','話しながら自分の位置を↑↓で動かし、全員そろったら答え合わせ','全員正しければ全員の勝ち。ズレた人が負け']},
  {id:'ins',c:'裏切り者をさがせ',name:'インサイダー',min:4,d:'質問で答えを当てつつ、答えを知る裏切り者を探す',
-  rules:['マスター・インサイダー・庶民の役職が配られる。マスターは公開','お題を知っているのはマスターとインサイダーだけ','マスター以外がはい・いいえで答えられる質問をして、3分以内にお題を当てる','当たったら話し合い(質問にかかった時間に応じて30〜90秒)、インサイダーだと思う人に1回だけ投票','インサイダーが1人で最多票ならインサイダーの負け。逃げ切ったらインサイダーの勝ち。時間切れは全員負け']},
+  rules:['ホストが質問時間(2〜5分)とマスター(おまかせか指名)を決める','マスター・インサイダー・庶民の役職が配られる。マスターは公開','お題を知っているのはマスターとインサイダーだけ','マスター以外がはい・いいえで答えられる質問をして、時間内にお題を当てる','当たったら話し合い(質問にかかった時間に応じて30〜90秒)、インサイダーだと思う人に1回だけ投票','インサイダーが1人で最多票ならインサイダーの負け。逃げ切ったらインサイダーの勝ち。時間切れは全員負け']},
  {id:'wave',c:'ヒントで針を合わせろ',name:'ウェーブレングス',min:2,d:'ヒント1つでメーター上の位置を当てる',
   rules:['ヒント役(順番に交代)だけが、メーター上の正解の位置を見られる','ヒント役は位置を表す言葉を1つ送る(例:「冷たい〜熱い」の右寄りなら「ラーメン」)','他の人はスライダーで位置を予想','一番近い人が勝ち、一番遠い人が負け。誰も近づけなかったらヒント役も負け']},
  {id:'hl',c:'上か下か、外したら脱落',name:'ハイ&ロー',min:1,d:'全員同じカードで上か下か。最後まで残った人の勝ち',
   rules:['全員が同じカードを見て、次のカードが上か下かを選ぶ','外したら脱落。同じ数字ならセーフ','残っている全員が外したら、その回はやり直し','最後の1人が勝ち。最初に脱落した人が一番負け','1人で遊ぶときは5連続で当てたら勝ち']},
  {id:'chin',c:'サイコロ三つで勝負',name:'チンチロ',min:2,d:'全員同時にサイコロ。強い役が勝ち',
   rules:['各自サイコロ3つを、役が出るまで最大3回振る(1タップで自動)','強さ:ピンゾロ(1・1・1)>ゾロ目>シゴロ(4・5・6)>目(2つそろって残りの数)>目なし>ヒフミ(1・2・3)','一番強い人が勝ち、一番弱い人が負け']},
+ {id:'ii',c:'道具で言い逃れろ',name:'言い訳バトル',min:3,d:'カオスな状況を、配られた道具で切り抜ける。1対1か2対2、残りは投票者',
+  rules:['1対1(3人から)か2対2(5人から)で対戦。残りの人は全員が投票者(必ず1人以上)','全員に同じカオスな状況が出る。対戦する側にだけ道具が3つこっそり配られる','使う道具を選んで「準備OK」。両方そろったら、順番に道具を見せながら切り抜け方を話す','投票者は「飲むべきなのはどっち？」に投票','票が多かった側が飲む。同数なら両方飲む']},
  {id:'rr',c:'引き金を引け',name:'ロシアンルーレット',min:1,d:'6発中1発が当たり。順番に引き金を引く',
   rules:['6発のうち1発だけが当たり。順番に引き金を引いていく','当たった人が負け。それ以外の全員が勝ち']}
 ];
@@ -204,7 +206,7 @@ const bc=()=>{if(mode!=='host')return;syncEp();saveHost();
  if(!pl(H.seat))H.seat=H.host;
  show(H.hand&&pl(H.hand)?handScreen(H.hand):frame(H.seat));
  for(const p of H.players){if(onDevice(p.id))continue;const c=conns.get(p.id);if(c&&c.open)try{c.send({t:'v',h:frame(p.id)})}catch(e){}}};
-const HOSTONLY=new Set(['redo','game','menu','settle','reset','mode','scope','sips','force','insGive','insVoteGo','again','next','seat','seatOk','seatNo','addLocal','kick','lock']);
+const HOSTONLY=new Set(['insTime','insMaster','insGo','iiFmt','iiShuf','iiGo','redo','game','menu','settle','reset','mode','scope','sips','force','insGive','insVoteGo','again','next','seat','seatOk','seatNo','addLocal','kick','lock']);
 const ctxBase=()=>H.view==='settle'?'settle':!H.g?'hub':`${H.g.id}:${H.g.phase}:${H.g.round||0}:${H.g.n||0}`;
 let lastBase=null;const seenOps=new Map();
 // 受付単位(画面・ラウンド)が変わるたびに世代番号を進め、重複履歴を捨てる
@@ -264,7 +266,7 @@ document.addEventListener('keydown',e=>{const m=sheetEl();
 // 演出をすぐ終わらせる(ゲームの進行には関係しない)
 const skipFx=()=>{app.querySelectorAll('.fx').forEach(e=>e.classList.add('done'))};
 let lastK='',lastT=0,opSeq=0;
-const FINAL=new Set(['undo','redo','sanOk','wOk','wClue','insOk','insVote','insGot','insGive','insVoteGo','itoCheck','cRoll','hlCh','rrPull','pickTo','again','next','game','menu','reset','kick','settle','addLocal','force']);
+const FINAL=new Set(['insGo','iiReady','iiDone','iiVote','iiGo','undo','redo','sanOk','wOk','wClue','insOk','insVote','insGot','insGive','insVoteGo','itoCheck','cRoll','hlCh','rrPull','pickTo','again','next','game','menu','reset','kick','settle','addLocal','force']);
 const fire=(c,ok)=>{
  if(c.confirm&&!ok){confirmAct=c;openSheet(`<p class="q" id="sheetTitle">${esc(c.confirm)}</p><div class="row"><button data-l="cyes">はい</button><button class="g" data-l="mclose">やめる</button></div>`);return}
  if(c.l){L[c.l]?.(c);if(c.keep&&!sheetEl().hidden)openSheet(null,c.l);return}
@@ -335,7 +337,8 @@ const isHost=pid=>onDevice(pid);
 const sound=(k,sid,delay=0)=>`<i hidden data-sfx="${k}" data-sid="${sid}" data-delay="${delay}"></i>`;
 const fx=(cls,id,inner='',tag='div',attrs='')=>`<${tag} class="fx ${cls}" data-fx="${id}" ${attrs}>${inner}</${tag}>`;
 const passBtn=(pid,id)=>onDevice(pid)&&onDevice(id)&&id!==pid?` <button class="g mini" data-a="seat" data-v="${esc(id)}">${nm(id)}に渡す</button>`:'';
-const status=(pid,ids,ok,label='回答状況')=>`<div class="card"><b>${label}</b><p>${ids.map(id=>{const off=pl(id)&&!pl(id).on,d=ok(id);return `<span class="st ${d?'done':off?'off':'todo'}">${d?'✓ ':''}${nm(id)}<small>${d?'回答済み':off?'切断中':'未回答'}</small></span>${d?'':passBtn(pid,id)}`}).join('')}</p>${isHost(pid)&&!ids.every(ok)?'<button class="g" data-a="force">待たずに進める(ホスト)</button>':''}</div>`;
+const STW={'確認状況':['確認済み','まだ'],'投票状況':['投票済み','まだ'],'選択状況':['選択済み','まだ'],'予想状況':['予想済み','まだ'],'回答状況':['回答済み','まだ']};
+const status=(pid,ids,ok,label='回答状況',dl,tl)=>{const w=STW[label]||['済み','まだ'];dl=dl||w[0];tl=tl||w[1];return `<div class="card"><b>${label}</b><p>${ids.map(id=>{const off=pl(id)&&!pl(id).on,d=ok(id);return `<span class="st ${d?'done':off?'off':'todo'}">${d?'✓ ':''}${nm(id)}<small>${d?dl:off?'切断中':tl}</small></span>${d?'':passBtn(pid,id)}`}).join('')}</p>${isHost(pid)&&!ids.every(ok)?'<button class="g" data-a="force">待たずに進める(ホスト)</button>':''}</div>`};
 const labelRows=marks=>{const rows=[],out=[];marks.map((m,i)=>({m,i})).sort((a,b)=>a.m.v-b.m.v).forEach(({m,i})=>{if(!m.l){out[i]=0;return}let r=rows.findIndex(end=>m.v-end>=13);if(r<0){r=rows.length;rows.push(-99)}rows[r]=m.v;out[i]=r});return{out,n:Math.max(1,rows.length)}};
 const meter=(pair,marks,t,cls='')=>{const LR=labelRows(marks),z=t==null?'':[[15,.25],[9,.45],[4,.7]].map(([w,o])=>`<div class="zone" style="left:${t-w}%;width:${w*2}%;opacity:${o}"></div>`).join('');
  return `<div class="meter ${cls}"><div class="ends"><span>← ${esc(pair[0])}</span><span>${esc(pair[1])} →</span></div><div class="track" style="height:${Math.max(56,LR.n*26+8)}px">${z}${marks.map((m,i)=>`<div class="mk ${m.c||''}" ${m.id?`id="${m.id}"`:''} style="left:${m.v}%;--i:${i}">${m.l?`<span style="top:${4+LR.out[i]*26}px;${m.v>75?'left:auto;right:7px':''}">${m.l}</span>`:''}</div>`).join('')}</div></div>`};
@@ -348,11 +351,15 @@ const confetti=()=>`<div class="confetti">${range(28).map(i=>`<i style="left:${r
 const nx=(k,t)=>`<div class="nextact ${k}"><span>${{act:'あなたの番',done:'完了',wait:'待機中'}[k]}</span><p>${t}</p></div>`;
 const NX={
  san:(g,p)=>g.done[p]?['done','回答済み。みんなを待っています']:['act',p===g.host?'自分の1〜3位を3つ選んで「決定」':`${nm(g.host)}の1〜3位を予想して「決定」`],
- ito:(g,p)=>['act','数字を例えで伝えて、自分の名前をドラッグして並ぶ。全員そろったら「答え合わせ」'],
- ins:(g,p)=>g.phase==='role'?(g.ready[p]?['done','確認済み。みんなを待っています']:['act','役職を確認して「隠す」']):g.phase==='q'?(p===g.m?['act','正解が出たら「正解が出た！」']:['act',`マスター${nm(g.m)}に、はい・いいえで答えられる質問をしよう`]):g.phase==='d'?['act','話し合い。インサイダーは誰？']:(g.votes[p]?['done','投票済み。みんなを待っています']:['act','インサイダーだと思う人に投票']),
+ ito:(g,p)=>['act',(g.words||{})[p]?'名前をドラッグして小さい順に並ぶ。全員そろったら「答え合わせ」':'自分の数字を表す例えを入力して「出す」'],
+ ins:(g,p)=>g.phase==='setup'?(isHost(p)?['act','質問時間とマスターを決めて「役職を配る」']:['wait','ホストが設定しています']):g.phase==='role'?(g.ready[p]?['done','確認済み。みんなを待っています']:['act','役職を確認して「隠す」']):g.phase==='q'?(p===g.m?['act','正解が出たら「正解が出た！」']:['act',`マスター${nm(g.m)}に、はい・いいえで答えられる質問をしよう`]):g.phase==='d'?['act','話し合い。インサイダーは誰？']:(g.votes[p]?['done','投票済み。みんなを待っています']:['act','インサイダーだと思う人に投票']),
  wave:(g,p)=>p===g.psy?(g.phase==='clue'?['act','ヒントを1つ入れて送る']:['wait','みんなの予想を待っています']):g.phase==='clue'?['wait',`${nm(g.psy)}がヒントを考え中`]:(g.gs[p]!=null?['done','予想済み。みんなを待っています']:['act','スライダーで位置を決めて「決定」']),
  hl:(g,p)=>!g.st[p].alive?['wait','脱落。みんなを見守ろう']:g.ch[p]?['done','選択済み。みんなを待っています']:['act','次のカードは上か下か。カードを上下にはじく'],
  chin:(g,p)=>g.hs[p]?['done','確定。みんなを待っています']:['act','お椀をはじいてサイコロを振る'],
+ ii:(g,p)=>{const s=iiSide(g,p);if(g.phase==='setup')return isHost(p)?['act','組み合わせを確認して「開始」']:['wait','ホストが組み合わせを決めています'];
+  if(g.phase==='prep')return s<0?['wait','対戦する人が道具を選んでいます']:g.ready[s]?['done','準備OK。相手を待っています']:['act','使う道具を選んで「準備OK」'];
+  if(g.phase==='talk')return s===g.n?['act','道具を見せながら切り抜け方を話して「話し終わった」']:['wait',`${iiName(g,g.n)}が話しています`];
+  return s>=0?['wait','投票を待っています']:g.votes[p]!=null?['done','投票済み。みんなを待っています']:['act','飲むべきなのはどっち？投票']},
  rr:(g,p)=>p===rrCur()?['act','あなたの番。引き金を右へスライド']:['wait',`${nm(rrCur())}の番`]
 };
 const handScreen=id=>`<i hidden data-ctx="${ctxOf()}"></i><div class="hand"><p class="muted">スマホを渡してください</p><p class="big">${nm(id)}</p><p class="muted">本人以外は画面を見ないで</p><button data-a="seatOk">${nm(id)}です、見る</button><button class="g" data-a="seatNo">やめる</button></div>`;
@@ -402,7 +409,7 @@ const settle=pid=>{const o=[...H.players].sort((a,b)=>b.w-a.w||a.l-b.l),n=o.leng
 const finish=(title,body,o)=>{const g=H.g,win=uniq(o.win||[]),lose=uniq(o.lose||[]).filter(x=>!win.includes(x)),worst=uniq(o.worst&&o.worst.length?o.worst:lose);
  win.forEach(id=>{const p=pl(id);if(p)p.w++});lose.forEach(id=>{const p=pl(id);if(p)p.l++});
  let ids=[],pk=false;
- if(H.scope==='lose')ids=lose;else if(H.scope==='worst')ids=worst;else if(H.scope==='notwin')ids=g.ps.filter(x=>!win.includes(x));else if(H.scope==='all')ids=g.ps;
+ if(o.drink)ids=uniq(o.drink);else if(H.scope==='lose')ids=lose;else if(H.scope==='worst')ids=worst;else if(H.scope==='notwin')ids=g.ps.filter(x=>!win.includes(x));else if(H.scope==='all')ids=g.ps;
  else if(H.scope==='pick'){if(win.length)pk=true;else ids=lose}
  const drinkers=ids.map(id=>{const p=pl(id);if(p&&drinkFor(id))p.pen++;return{id,t:penText(id)}});
  g.phase='done';g.res={title,body,win,lose,drinkers,pick:pk,picked:null}};
@@ -462,21 +469,28 @@ const sanEnd=()=>{const g=H.g,ans=g.done[g.host],gs=g.ps.filter(id=>id!==g.host&
 /* --- ito(自分の数字は自分のスマホにだけ表示) --- */
 I.ito=ps=>{const nums={};shuffle(range(100).map(x=>x+1)).slice(0,ps.length).forEach((n,i)=>nums[ps[i]]=n);H.g={type:'ito',ps,th:pick(ITO),nums,order:shuffle(ps),phase:'play'}};
 P.ito=pid=>{const g=H.g,k=g.order.indexOf(pid),others=H.local.length&&onDevice(pid)?`<p class="muted">この端末の人の数字は、上の名前ボタンでスマホを渡して確認</p>`:'';
- return `${peek(`<p class="muted">${nm(pid)}の数字(人に見せない)</p><p class="huge">${g.nums[pid]}</p>`)}<div class="card center"><p class="q">${esc(g.th.t)}</p><p class="muted">1 = ${esc(g.th.lo)} ／ 100 = ${esc(g.th.hi)}</p></div>${others}
- <p>数字は言わずに、テーマに沿った例えで表現。話しながら自分の名前を上下にドラッグ(または↑↓)して、小さい順に並ぼう。</p>
- <div class="card"><b>小さい ↓</b><ul class="ord">${g.order.map((id,i)=>`<li class="${id===pid?'me':''}" ${id===pid?'data-gz="drag"':''}><b>${i+1}</b><span>${nm(id)}</span>${id===pid?`<button class="g mini" data-a="mv" data-v="-1" ${k===0?'disabled':''} aria-label="上へ">↑</button><button class="g mini" data-a="mv" data-v="1" ${k===g.order.length-1?'disabled':''} aria-label="下へ">↓</button>`:''}</li>`).join('')}</ul><b>↑ 大きい</b></div>
+ return `<div class="card center itoth"><p class="muted">お題</p><p class="q">${esc(g.th.t)}</p><p class="scale"><span>1 ${esc(g.th.lo)}</span><span>100 ${esc(g.th.hi)}</span></p></div>${peek(`<p class="muted">${nm(pid)}の数字(人に見せない)</p><p class="huge">${g.nums[pid]}</p>`)}${others}
+ <div class="card itoword"><b>自分の例え(数字は書かない)</b><div class="inrow"><input type="text" data-f="word" data-k="${g.id}-w-${esc(pid)}" maxlength="20" placeholder="例:${g.th.t.includes('動物')?'ライオン':'ゾウ'}" value="${esc((g.words||{})[pid]||'')}" aria-label="自分の例え"><button class="g" data-a="itoWord">${(g.words||{})[pid]?'変える':'出す'}</button></div><p class="muted">みんなの画面の並び順に表示される。名前を上下にドラッグ(または↑↓)して小さい順に並ぼう</p></div>
+ <div class="card"><b class="edge">↑ 小さい(${esc(g.th.lo)})</b><ul class="ord">${g.order.map((id,i)=>`<li class="${id===pid?'me':''}" ${id===pid?'data-gz="drag"':''}><b>${i+1}</b><span>${nm(id)}${(g.words||{})[id]?`<em class="itow">「${esc(g.words[id])}」</em>`:'<em class="itow none">考え中…</em>'}</span>${id===pid?`<button class="g mini" data-a="mv" data-v="-1" ${k===0?'disabled':''} aria-label="上へ">↑</button><button class="g mini" data-a="mv" data-v="1" ${k===g.order.length-1?'disabled':''} aria-label="下へ">↓</button>`:''}</li>`).join('')}</ul><b class="edge">↓ 大きい(${esc(g.th.hi)})</b></div>
  <button data-a="itoCheck">全員並んだ、答え合わせ</button>`};
+A.itoWord=(pid,v,f)=>{const g=G('ito',pid);if(!g)return;const w=String(f.word||'').trim().slice(0,20);g.words=g.words||{};if(w)g.words[pid]=w;else delete g.words[pid]};
 A.mv=(pid,v)=>{const g=G('ito',pid);if(!g)return;const o=g.order,i=o.indexOf(pid),j=i+(+v>0?1:-1);if(i<0||j<0||j>=o.length)return;[o[i],o[j]]=[o[j],o[i]]};
 A.itoCheck=pid=>{const g=G('ito',pid);if(!g)return;const sorted=[...g.order].sort((a,b)=>g.nums[a]-g.nums[b]);
  const wrong=g.order.filter((id,i)=>sorted[i]!==id),right=g.ps.filter(id=>!wrong.includes(id));
- finish(wrong.length?`${wrong.length}人ズレ`:'全員成功！',`<p class="q">${esc(g.th.t)}</p><ul class="ord reveal-list">${g.order.map(id=>`<li><span class="${wrong.includes(id)?'pen':''}">${nm(id)}</span><b>${g.nums[id]}</b></li>`).join('')}</ul>`,{win:wrong.length?right:g.ps,lose:wrong})};
+ finish(wrong.length?`${wrong.length}人ズレ`:'全員成功！',`<p class="q">${esc(g.th.t)}</p><ul class="ord reveal-list">${g.order.map(id=>`<li><span class="${wrong.includes(id)?'pen':''}">${wrong.includes(id)?'✕':'✓'} ${nm(id)}${(g.words||{})[id]?`<em class="itow">「${esc(g.words[id])}」</em>`:''}</span><b>${g.nums[id]}</b></li>`).join('')}</ul>`,{win:wrong.length?right:g.ps,lose:wrong})};
 
 /* --- インサイダー(役職は本人のスマホにだけ) --- */
-I.ins=ps=>{const m=pick(ps);H.g={type:'ins',ps,m,ins:pick(ps.filter(x=>x!==m)),w:pick(WORDS),ready:{},votes:{},phase:'role'}};
+I.ins=ps=>{H.g={type:'ins',ps,ready:{},votes:{},phase:'setup',qt:H.insT||3,mset:ps.includes(H.insM)?H.insM:'rand'}};
+// 準備:質問時間(分)とマスター(おまかせ/指名)。決めたら役職を配る
+A.insTime=(p,v)=>{const g=G('ins',p,'setup');const n=+v;if(!g||![2,3,4,5].includes(n))return;g.qt=H.insT=n};
+A.insMaster=(p,v)=>{const g=G('ins',p,'setup');if(!g||(v!=='rand'&&!g.ps.includes(v)))return;g.mset=H.insM=v};
+A.insGo=p=>{const g=G('ins',p,'setup');if(!g)return;g.m=g.mset==='rand'?pick(g.ps):g.mset;g.ins=pick(g.ps.filter(x=>x!==g.m));g.w=pick(WORDS);g.phase='role'};
 const roleCard=(g,pid)=>pid===g.m?`<p class="big">マスター</p><p>お題 <b class="big">${esc(g.w)}</b></p><p>質問に「はい・いいえ・わからない」だけで答える</p>`
  :pid===g.ins?`<p class="big pen">インサイダー</p><p>お題 <b class="big">${esc(g.w)}</b></p><p>庶民のふりをして正解に誘導。最後にバレたら負け</p>`
- :`<p class="big">庶民</p><p>マスターに質問して、3分以内にお題を当てよう。答えを知るインサイダーが紛れてる</p>`;
+ :`<p class="big">庶民</p><p>マスターに質問して、${g.qt||3}分以内にお題を当てよう。答えを知るインサイダーが紛れてる</p>`;
 P.ins=pid=>{const g=H.g;
+ if(g.phase==='setup')return `<div class="card"><b>質問時間</b><div class="row wrap3">${[2,3,4,5].map(n=>`<button class="g ${g.qt===n?'on':''}" data-a="insTime" data-v="${n}" ${isHost(pid)?'':'disabled'}>${n}分</button>`).join('')}</div>
+  <b>マスター(お題を知っていて、質問に答える人)</b><div class="row wrap3"><button class="g ${g.mset==='rand'?'on':''}" data-a="insMaster" data-v="rand" ${isHost(pid)?'':'disabled'}>おまかせ</button>${g.ps.map(id=>`<button class="g ${g.mset===id?'on':''}" data-a="insMaster" data-v="${esc(id)}" ${isHost(pid)?'':'disabled'}>${nm(id)}</button>`).join('')}</div><p class="muted">インサイダーはマスター以外からランダム</p></div>${isHost(pid)?'<button data-a="insGo">役職を配る</button>':''}`;
  if(g.phase==='role')return `<h2>${nm(pid)}の役職</h2>${g.ready[pid]?'<div class="card center"><p>確認済み(役職は隠しています)</p></div><p>みんなを待っています</p>':`${peek(roleCard(g,pid),'flipin')}<button data-a="insOk">確認した、隠す</button>`}${status(pid,g.ps,id=>!!g.ready[id],'確認状況')}`;
  if(g.phase==='q')return `<div class="card center"><p>質問タイム ／ マスター:<b>${nm(g.m)}</b></p><p class="huge timer" data-rem="${g.end-Date.now()}"></p></div>
   ${pid===g.m?`<div class="card center"><p>お題 <b class="big">${esc(g.w)}</b></p></div><button data-a="insGot">正解が出た！</button>`:pid===g.ins?`<p class="muted">あなたはインサイダー(お題:${esc(g.w)})</p>`:''}${pid!==g.m&&onDevice(pid)&&onDevice(g.m)?`<button class="g" data-a="insGot">正解が出た！(マスター${nm(g.m)}が判定)</button>`:pid===g.m?'':'<p>マスターに質問して当てよう</p>'}
@@ -484,13 +498,13 @@ P.ins=pid=>{const g=H.g;
  if(g.phase==='d')return `<div class="card center"><p>お題は「${esc(g.w)}」。インサイダーは誰？</p><p class="huge timer" data-rem="${g.end-Date.now()}"></p><p class="muted">話し合い:質問にかかった時間に応じて30〜90秒</p></div>${isHost(pid)?'<button data-a="insVoteGo">投票へ(ホスト)</button>':''}`;
  if(g.votes[pid])return `<h2>投票済み</h2>${status(pid,g.ps,id=>!!g.votes[id],'投票状況')}`;
  return `<h2>${nm(pid)}の投票:インサイダーは誰？</h2>${g.ps.filter(id=>id!==pid).map(id=>`<button class="g" data-a="insVote" data-v="${esc(id)}" data-confirm="${nm(id)}に投票しますか？(変更できません)">${nm(id)}</button>`).join('')}${status(pid,g.ps,id=>!!g.votes[id],'投票状況')}`};
-const insStart=()=>{const g=H.g;g.phase='q';g.t0=Date.now();g.end=g.t0+180000};
+const insStart=()=>{const g=H.g;g.phase='q';g.t0=Date.now();g.end=g.t0+(g.qt||3)*60000};
 A.insOk=pid=>{const g=G('ins',pid,'role');if(!g)return;g.ready[pid]=1;if(g.ps.every(id=>g.ready[id]))insStart()};
 A.insGot=pid=>{const g=G('ins',pid,'q');if(!g||(pid!==g.m&&!onDevice(pid)))return;if(Date.now()>=g.end){insFail();return}const used=(Date.now()-g.t0)/1000;g.end=Date.now()+Math.min(90,Math.max(30,Math.round(used)))*1000;g.phase='d'};
 A.insGive=()=>{if(H.g&&H.g.type==='ins'&&H.g.phase!=='done')insFail()};
 A.insVoteGo=()=>{if(H.g&&H.g.type==='ins'&&H.g.phase==='d')H.g.phase='vote'};
 A.insVote=(pid,v)=>{const g=G('ins',pid,'vote');if(!g||g.votes[pid]||v===pid||!g.ps.includes(v))return;g.votes[pid]=v;if(g.ps.every(id=>g.votes[id]))insTally()};
-F.ins=()=>{const g=H.g;if(g.phase==='role')insStart();else if(g.phase==='vote')insTally()};
+F.ins=()=>{const g=H.g;if(g.phase==='setup')A.insGo(H.host);else if(g.phase==='role')insStart();else if(g.phase==='vote')insTally()};
 const insFail=()=>{const g=H.g;finish('時間切れ…全員負け',`<p>お題は「${esc(g.w)}」</p><p class="reveal-name">インサイダーは <b>${nm(g.ins)}</b></p>`,{win:[],lose:g.ps,worst:g.ps})};
 const insTally=()=>{const g=H.g,cnt={};Object.values(g.votes).forEach(v=>cnt[v]=(cnt[v]||0)+1);
  const mx=Math.max(0,...Object.values(cnt)),top=Object.keys(cnt).filter(k=>cnt[k]===mx),hit=top.length===1&&top[0]===g.ins,others=g.ps.filter(id=>id!==g.ins);
@@ -519,15 +533,24 @@ const waveEnd=()=>{const g=H.g,pt=d=>d<=4?4:d<=9?3:d<=15?2:0;
 /* --- ハイ&ロー(サバイバル) --- */
 I.hl=ps=>{const st={};ps.forEach(id=>st[id]={alive:true,out:0});H.g={type:'hl',ps,st,ch:{},card:1+rnd(13),prev:0,round:0,log:'',phase:'play',streak:0}};
 P.hl=pid=>{const g=H.g,s=g.st[pid],alive=g.ps.filter(id=>g.st[id].alive),solo=g.ps.length===1;
+ const L=g.last,DIR={up:'⬆ ハイ',down:'⬇ ロー',same:'＝ 同じ数字'};
+ let roundBox='';
+ if(L&&g.round){const meOut=L.miss.includes(pid),meIn=!meOut&&L.ch[pid];
+  const stampT=L.all?'全員ハズレ！やり直し':meOut?'脱落…':meIn?'セーフ！':'';
+  roundBox=`${sound('card',g.id+'c'+g.round)}<div class="card center hlround"><div class="hlflip"><span class="hlc old">${CARD(L.prev)}</span><span class="arr">→</span>${fx('hlc new flip',g.id+'n'+g.round+pid,CARD(L.nx),'span')}</div><p class="hldir ${L.dir}">${DIR[L.dir]}</p>
+  ${L.all?'<p class="big2">全員ハズレ！この回はやり直し</p>':L.miss.length?`<p class="hlout">脱落:${L.miss.map(id=>`<b>${nm(id)}</b>`).join(' ')}</p>`:'<p class="big2">全員セーフ！</p>'}
+  ${stampT?fx('hlst '+(meOut||L.all?'drink':'win'),g.id+'st'+g.round+pid,stampT,'p'):''}</div>${sound(meOut?'lose':L.miss.length||L.all?'reveal':'win',g.id+'snd'+g.round+pid,300)}`}
+ const board=solo?'':`<div class="card"><b>生き残り ${alive.length}/${g.ps.length}</b><p>${g.ps.map(id=>{const o=!g.st[id].alive;return `<span class="st ${o?'off hlx':'done'}">${o?'✕ ':''}${nm(id)}<small>${o?g.st[id].out+'回目で脱落':g.ch[id]?'選択済み':'まだ'}</small></span>`}).join('')}</p>${isHost(pid)&&alive.some(id=>!g.ch[id])?'<button class="g" data-a="force">待たずに進める(ホスト)</button>':''}</div>`;
  const hi=Math.round((13-g.card)/13*100),lo=Math.round((g.card-1)/13*100);
  let mine;if(!s.alive)mine=`<p class="pen">脱落(${s.out}回目)。みんなを見守ろう</p>`;
  else if(g.ch[pid])mine=`<p>選択:<b>${{h:'ハイ',l:'ロー'}[g.ch[pid]]}</b>。みんなを待っています</p><button class="g" data-a="undo">選び直す</button>`;
  else mine=`<p class="hint">カードを上にはじくとハイ、下でロー</p><div class="row"><button data-a="hlCh" data-v="h">ハイ ${hi}%</button><button data-a="hlCh" data-v="l">ロー ${lo}%</button></div>`;
- return `${g.round?sound('card',g.id+'c'+g.round):''}<div class="card center" ${s.alive&&!g.ch[pid]?'data-gz="swipe" data-up="[data-a=hlCh][data-v=h]" data-down="[data-a=hlCh][data-v=l]"':''}><p class="muted">${g.log||'最初のカード'}</p>${fx('flip huge',g.id+'c'+g.round+pid,CARD(g.card),'p')}<p>${solo?`${g.streak}連続(5連続で勝ち)`:`残り ${alive.length}人`}</p></div>${mine}<p class="muted">同じ数字はセーフ</p>${status(pid,alive,id=>!!g.ch[id],'選択状況')}`};
+ return `${roundBox}<div class="card center hlnow" ${s.alive&&!g.ch[pid]?'data-gz="swipe" data-up="[data-a=hlCh][data-v=h]" data-down="[data-a=hlCh][data-v=l]"':''}><p class="muted">${g.round?'今のカード。次はこれより上か下か':'最初のカード。次はこれより上か下か'}</p>${g.round?`<p class="huge">${CARD(g.card)}</p>`:fx('flip huge',g.id+'c0'+pid,CARD(g.card),'p')}<p>${solo?`${g.streak}連続(5連続で勝ち)`:`残り ${alive.length}人`}</p></div>${mine}<p class="muted">同じ数字はセーフ</p>${board}`};
 A.hlCh=(pid,v)=>{const g=G('hl',pid,'play'),s=g&&g.st[pid];if(!s||!s.alive||g.ch[pid]||!['h','l'].includes(v))return;g.ch[pid]=v;if(g.ps.filter(id=>g.st[id].alive).every(id=>g.ch[id]))hlResolve()};
 F.hl=()=>{const g=H.g;g.ps.forEach(id=>{if(g.st[id].alive&&!g.ch[id])g.ch[id]=pick(['h','l'])});hlResolve()};
 const hlResolve=()=>{const g=H.g,prev=g.card,nx=1+rnd(13),alive=g.ps.filter(id=>g.st[id].alive);g.round++;
  const miss=alive.filter(id=>nx!==prev&&!((g.ch[id]==='h'&&nx>prev)||(g.ch[id]==='l'&&nx<prev)));
+ g.last={prev,nx,dir:nx>prev?'up':nx<prev?'down':'same',miss:[...miss],ch:{...g.ch},all:miss.length===alive.length&&alive.length>1};
  g.card=nx;g.ch={};const solo=g.ps.length===1;
  if(solo){if(miss.length){g.st[g.ps[0]].alive=false;return finish('ハイ&ロー:外れ',`<p>${CARD(prev)} → <b>${CARD(nx)}</b></p><p>${g.streak}連続で終了</p>`,{win:[],lose:g.ps})}
   g.streak++;g.log=`${CARD(prev)} → ${CARD(nx)} 当たり！`;if(g.streak>=5)return finish('ハイ&ロー:5連続！',`<p>${CARD(prev)} → <b>${CARD(nx)}</b></p>`,{win:g.ps,lose:[]});return}
@@ -556,6 +579,45 @@ const chinEnd=()=>{const g=H.g,hs=g.hs,ps=g.ps,rs=ps.map(id=>hs[id].r),mx=Math.m
  const lines=[...ps].sort((a,b)=>hs[b].r-hs[a].r).map(id=>`<p>${nm(id)}:${g.d[id]?g.d[id].map(DIE).join(''):''} <b>${hs[id].n}</b></p>`).join('');
  if(mx===mn)return finish('全員同じ役で引き分け',lines,{win:[],lose:[]});
  finish(`${ps.filter(id=>hs[id].r===mx).map(nm).join('・')}の勝ち！`,lines,{win:ps.filter(id=>hs[id].r===mx),lose:ps.filter(id=>hs[id].r===mn)})};
+
+/* --- 言い訳バトル(1対1か2対2。残りは投票者。票が多い側が飲む、同数は両方) --- */
+const iiSide=(g,id)=>g.sides[0].includes(id)?0:g.sides[1].includes(id)?1:-1;
+const iiName=(g,s)=>g.sides[s].map(nm).join('・');
+const iiDeal=g=>{const n=g.fmt==='2v2'?2:1,sh=shuffle(g.ps);g.sides=[sh.slice(0,n),sh.slice(n,2*n)];g.voters=sh.slice(2*n)};
+I.ii=ps=>{H.g={type:'ii',ps,fmt:ps.length>=6?'2v2':'1v1',phase:'setup',n:0,ready:[0,0],used:[[],[]],votes:{}};iiDeal(H.g)};
+const iiCards=(items,cls='')=>`<div class="iicards">${items.map(t=>`<span class="iicard ${cls}">${esc(t)}</span>`).join('')}</div>`;
+const iiTeams=g=>`<div class="card iiteams"><div class="vs"><p class="big2">${iiName(g,0)}</p><b>VS</b><p class="big2">${iiName(g,1)}</p></div><p class="muted center">投票者:${g.voters.map(nm).join('・')}</p></div>`;
+const iiEvent=g=>`<div class="card center iiev"><p class="muted">こんな時どうする？</p><p class="q">${esc(g.ev)}</p></div>`;
+P.ii=pid=>{const g=H.g,s=iiSide(g,pid);
+ if(g.phase==='setup'){const can2=g.ps.length>=5;
+  return `${iiTeams(g)}${isHost(pid)?`<div class="row"><button class="g ${g.fmt==='1v1'?'on':''}" data-a="iiFmt" data-v="1v1">1対1</button><button class="g ${g.fmt==='2v2'?'on':''}" data-a="iiFmt" data-v="2v2" ${can2?'':'disabled'}>2対2${can2?'':'(5人から)'}</button></div><button class="g" data-a="iiShuf">組み合わせをシャッフル</button><button data-a="iiGo">開始</button>`:''}`}
+ const ev=iiEvent(g);
+ if(g.phase==='prep'){
+  if(s<0)return `${ev}${iiTeams(g)}${status(pid,[0,1].map(i=>g.sides[i][0]),id=>!!g.ready[iiSide(g,id)],'準備状況','準備OK','考え中')}`;
+  if(g.ready[s])return `${ev}<div class="card"><b>使う道具</b>${iiCards(g.used[s].map(i=>g.hands[s][i]),'on')}</div><p>準備OK。相手を待っています</p>`;
+  return `${ev}${peek(`<p class="muted">${s?'右':'左'}チーム${g.fmt==='2v2'?'(相方にだけ見える)':''}の道具</p><div class="iicards">${g.hands[s].map((t,i)=>`<button class="iicard ${g.used[s].includes(i)?'on':''}" data-a="iiUse" data-v="${i}">${esc(t)}</button>`).join('')}</div>`)}<p class="hint">使う道具をタップ(1つ以上)。全部使ってもいい</p><button data-a="iiReady" ${g.used[s].length?'':'disabled'}>準備OK</button>${isHost(pid)?'<button class="g" data-a="force">待たずに進める(ホスト)</button>':''}`}
+ if(g.phase==='talk'){const cur=g.n,shown=[0,1].filter(i=>i<=cur);
+  return `${ev}${shown.map(i=>`<div class="card ${i===cur?'iinow':''}"><b>${iiName(g,i)}${i===cur?' が話し中':' の言い訳'}</b>${iiCards(g.used[i].map(k=>g.hands[i][k]),'on')}</div>`).join('')}${s===cur?'<button data-a="iiDone">話し終わった</button>':''}${isHost(pid)&&s!==cur?'<button class="g" data-a="force">次へ進める(ホスト)</button>':''}`}
+ // vote
+ const both=[0,1].map(i=>`<div class="card"><b>${iiName(g,i)}</b>${iiCards(g.used[i].map(k=>g.hands[i][k]),'on')}</div>`).join('');
+ if(s>=0||g.votes[pid]!=null)return `${ev}${both}${status(pid,g.voters,id=>g.votes[id]!=null,'投票状況','投票済み','まだ')}`;
+ return `${ev}${both}<h2>飲むべきなのはどっち？</h2><div class="row">${[0,1].map(i=>`<button class="ng" data-a="iiVote" data-v="${i}" data-confirm="${iiName(g,i)}に投票しますか？(変更できません)">${iiName(g,i)}</button>`).join('')}</div>${status(pid,g.voters,id=>g.votes[id]!=null,'投票状況','投票済み','まだ')}`};
+A.iiFmt=(p,v)=>{const g=G('ii',p,'setup');if(!g||!['1v1','2v2'].includes(v)||(v==='2v2'&&g.ps.length<5))return;g.fmt=v;iiDeal(g)};
+A.iiShuf=p=>{const g=G('ii',p,'setup');if(g)iiDeal(g)};
+A.iiGo=p=>{const g=G('ii',p,'setup');if(!g||g.voters.length<1)return;const it=shuffle(II_IT);g.ev=pick(II_EV);g.hands=[it.slice(0,3),it.slice(3,6)];g.phase='prep'};
+A.iiUse=(pid,v)=>{const g=G('ii',pid,'prep'),s=g?iiSide(g,pid):-1;if(s<0||g.ready[s])return;const i=+v;if(!(i>=0&&i<3))return;const u=g.used[s],k=u.indexOf(i);if(k>=0)u.splice(k,1);else u.push(i)};
+A.iiReady=pid=>{const g=G('ii',pid,'prep'),s=g?iiSide(g,pid):-1;if(s<0||g.ready[s]||!g.used[s].length)return;g.ready[s]=1;if(g.ready[0]&&g.ready[1]){g.phase='talk';g.n=0}};
+A.iiDone=pid=>{const g=G('ii',pid,'talk');if(!g||iiSide(g,pid)!==g.n)return;if(g.n===0)g.n=1;else g.phase='vote'};
+A.iiVote=(pid,v)=>{const g=G('ii',pid,'vote');if(!g||!g.voters.includes(pid)||g.votes[pid]!=null||!['0','1'].includes(v))return;g.votes[pid]=+v;if(g.voters.every(id=>g.votes[id]!=null))iiEnd()};
+F.ii=()=>{const g=H.g;
+ if(g.phase==='setup')return A.iiGo(H.host);
+ if(g.phase==='prep'){[0,1].forEach(s=>{if(!g.used[s].length)g.used[s]=[0,1,2];g.ready[s]=1});g.phase='talk';g.n=0;return}
+ if(g.phase==='talk'){if(g.n===0)g.n=1;else g.phase='vote';return}
+ iiEnd()};
+const iiEnd=()=>{const g=H.g,c=[0,1].map(i=>g.voters.filter(id=>g.votes[id]===i).length);
+ const loseS=c[0]===c[1]?[0,1]:[c[0]>c[1]?0:1],lose=loseS.flatMap(i=>g.sides[i]),win=loseS.length>1?[]:g.sides[1-loseS[0]];
+ const title=loseS.length>1?`${c[0]}対${c[1]}の同数！両方飲む`:`${iiName(g,loseS[0])}が飲む！`;
+ finish(title,`<p class="q">${esc(g.ev)}</p>${[0,1].map(i=>`<p><b>${iiName(g,i)}:${c[i]}票</b></p>${iiCards(g.used[i].map(k=>g.hands[i][k]),'on')}`).join('')}`,{win,lose,drink:lose})};
 
 /* --- ロシアンルーレット(手番制) --- */
 I.rr=ps=>{H.g={type:'rr',ps,b:rnd(6),pos:0,ci:H.turn%ps.length,msg:'',n:0,phase:'play'}};
