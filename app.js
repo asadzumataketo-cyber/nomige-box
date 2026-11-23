@@ -142,6 +142,7 @@ const L={
  regate(){me.adult=null;ls.del('nm-adult');gate()},
  solo(){if(!takeName())return;H=null;startHost(null,false,true)},
  enter(){if(!takeName())return;if(!me.tok){lobby('この端末では安全な接続を作れないため、通信で遊べません。「1台で遊ぶ」を使ってね');return}const c=($('#pwIn')?.value||'').trim().slice(0,20);if(normPw(c).length<2){lobby('合言葉は2文字以上');return}H=null;startGuest(c,true)},
+ rejoin(){if(code)startGuest(code,false)},
  randpw(){const i=$('#pwIn');if(i){i.value=randPw();i.focus()}},
  leave(){if(mode==='host')ls.del('nm-host');const K=plug('KeepAwake');K&&K.allowSleep&&K.allowSleep().catch(()=>{});cleanup();if(/^https?:$/.test(location.protocol))history.replaceState(null,'',location.pathname);lobby()},
  howto(){howto()},back(){lobby()},
@@ -166,7 +167,7 @@ const startHost=(c,resume,offline)=>{cleanup();mode='host';code=offline?null:c;
  if(offline){net('');bc();return}
  net('部屋を準備中…');bc();
  if(typeof Peer!=='function'){net('通信できません。「1台で遊ぶ」なら遊べます');return}
- peer=new Peer(roomId(c));
+ peer=new Peer(roomId(c),PEER_OPT);
  peer.on('open',()=>{tries=0;net('');if(/^https?:$/.test(location.protocol))history.replaceState(null,'','?r='+encodeURIComponent(c));bc()});
  peer.on('connection',cn=>{cn.on('data',d=>onData(cn,d));cn.on('close',()=>drop(cn));cn.on('error',()=>drop(cn))});
  peer.on('disconnected',()=>{net('接続が切れた。再接続中…');setTimeout(()=>{try{peer&&!peer.destroyed&&peer.reconnect()}catch(e){}},1500)});
@@ -210,11 +211,16 @@ setInterval(()=>{if(mode!=='host'||!H||!H.g||H.g.type!=='ins')return;const g=H.g
  if(g.phase==='q'&&Date.now()>=g.end){insFail();bc()}else if(g.phase==='d'&&Date.now()>=g.end){g.phase='vote';bc()}},500);
 
 /* --- ゲスト --- */
+const PEER_OPT={config:{iceServers:[{urls:['stun:stun.l.google.com:19302','stun:stun1.l.google.com:19302','stun:stun.cloudflare.com:3478']},
+ {urls:['turn:eu-0.turn.peerjs.com:3478','turn:us-0.turn.peerjs.com:3478'],username:'peerjs',credential:'peerjsp'},
+ {urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turns:openrelay.metered.ca:443?transport=tcp'],username:'openrelayproject',credential:'openrelayproject'}]}};
+let stageT=0;
+const stage=(msg,hint)=>{const e=$('#stage');if(e)e.textContent=msg;clearTimeout(stageT);if(hint)stageT=setTimeout(()=>{const h=$('#stageHint');if(h&&mode==='guest'&&!ever)h.hidden=false},hint)};
 const startGuest=(c,auto)=>{cleanup();mode='guest';code=c;ever=false;net('接続中…');
- show(`<p>合言葉「${esc(c)}」の部屋を探しています…</p><button class="g" data-l="leave">やめる</button>`);
+ show(`<p>合言葉「${esc(c)}」の部屋を探しています…</p><p class="hint" id="stage">通信サーバーに接続中…(1/2)</p><div class="card" id="stageHint" hidden><b>つながらないとき</b><p>・ホストのスマホでアプリを開いたままにする<br>・2人とも同じWi-Fi、または2人ともモバイル通信にする<br>・LINEなどのアプリ内ではなくSafari/Chromeで開く</p><button data-l="rejoin">もう一度つなぐ</button></div><button class="g" data-l="leave">やめる</button>`);
  if(typeof Peer!=='function'){lobby('通信できません。ネット接続を確認してね');return}
- peer=new Peer();
- peer.on('open',connect);
+ peer=new Peer(PEER_OPT);stage('通信サーバーに接続中…(1/2)',10000);
+ peer.on('open',()=>{stage('ホストのスマホに接続中…(2/2)',12000);connect()});
  peer.on('error',e=>{if(e.type==='peer-unavailable'&&!ever){cleanup();if(auto){H=null;startHost(c,false,false);toast('新しい部屋を作りました。あなたがホストです')}else lobby('部屋が見つかりません。合言葉を確認してね')}else retry()});
  peer.on('disconnected',()=>{try{peer&&!peer.destroyed&&peer.reconnect()}catch(e){}});
 };
